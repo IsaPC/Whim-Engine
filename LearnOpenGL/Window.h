@@ -24,24 +24,21 @@ public:
 
 private:
 	//Shader scripts
-	std::string vertexShaderSource = "#version 330 core\n"
-		"layout (location = 0) in vec3 aPos;\n"
-		"void main()\n"
-		"{\n"
-		"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-		"}\0";
-	std::string fragmentShaderSource = "#version 330 core\n"
-		"out vec4 FragColor;\n"
-		"void main()\n"
-		"{\n"
-		"   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-		"}\n\0";
+	unsigned int VAO;
+	unsigned int VBO;
 
 private:
 	void init();
 	//void run();
 	//void buffer();
-	static unsigned int compileShader(unsigned int type, std::string& source);
-	static unsigned int createShader(std::string& vShader, std::string& fShader);
+	// static unsigned int compileShader(unsigned int type, std::string& source);
+	// static unsigned int createShader(std::string& vShader, std::string& fShader);
+	void buffer();
+	void test();
+
+	void processInput(GLFWwindow* window) {
+		if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+			glfwSetWindowShouldClose(window, true);
+	}
 };
 
