@@ -23,49 +23,44 @@ const char* fragmentShaderSource = "#version 330 core\n"
 "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
 "}\n\0";
 
-int program = 0;
+int createShader(unsigned int type, std::string shaderScript) {
+    // GL_VERTEX_SHADER, GL_FRAGMENT_SHADER
+    // create shader program on GPU
+    int vertexShader = glCreateShader(type);
+    
+    // format string
+    const char* source = shaderScript.c_str();
 
-// Shader
-void shader() {
-    // build and compile our shader program
-    // ------------------------------------
-    // create shader ID's
-    int vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    // assign script to program
+    glShaderSource(vertexShader, 1, &source, NULL);
 
-    // assign shader scripts to id
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-
+    // compile the shader script
     glCompileShader(vertexShader);
-    glCompileShader(fragmentShader);
 
-
-    // check for shader compile errors
+    //check for errors if the compilation failed
     int success;
     char infoLog[512];
     glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
     if (!success)
     {
         glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
-    // fragment shader
-   
-    // check for shader compile errors
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+        std::cout << "ERROR: failed to create shader\n" << infoLog << std::endl;
     }
 
-    // link shaders
-    program = glCreateProgram();
+    // return the id of the compiled shader program
+    return vertexShader;
+}
+
+int configProgram(unsigned int vertexShader, unsigned int fragmentShader) {
+    int program = glCreateProgram();
     glAttachShader(program, vertexShader);
     glAttachShader(program, fragmentShader);
     glLinkProgram(program);
     // check for linking errors
+
+   //check for errors of the program
+    int success;
+    char infoLog[512];
     glGetProgramiv(program, GL_LINK_STATUS, &success);
     if (!success) {
         glGetProgramInfoLog(program, 512, NULL, infoLog);
@@ -73,14 +68,19 @@ void shader() {
     }
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
-}
 
+    return program;
+}
 
 int main()
 {
     // glfw: initialize and configure
     // ------------------------------
-    glfwInit();
+    if (!glfwInit()) {
+        std::cout << "glfw failed to initilise" << std::endl;
+    }
+
+
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -109,8 +109,18 @@ int main()
         return -1;
     }
 
-    shader();
-    
+
+    // build and compile our shader program
+    // ------------------------------------
+    // create vertex shader 
+    int vertexShader = createShader(GL_VERTEX_SHADER, vertexShaderSource);
+
+    // create fragment shader
+    int fragmentShader = createShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
+
+    // create te shader program from the shaders
+    int program = configProgram(vertexShader, fragmentShader);
+
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
