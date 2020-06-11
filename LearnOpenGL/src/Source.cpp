@@ -1,3 +1,5 @@
+// Author: Isaac Ceff
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
