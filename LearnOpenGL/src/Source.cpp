@@ -4,73 +4,97 @@ https://learnopengl.com/
 https://www.udemy.com/course/graphics-with-modern-opengl/
 https://www.youtube.com/watch?v=W3gAzLwfIP0&list=PLlrATfBNZ98foTJPJ_Ev03o2oq3-GGOS2
 
+
+
 */
 
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
+// opengl libs
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include <iostream>
+// for loading textures
+#define STB_IMAGE_IMPLEMENTATION
+#include "STB_IMAGE/stb_image.h"
 
+std::string parseShaderScript(std::string fileLocation);
+
+//window handling
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
 
-// settings
+// shader
+int createShader(unsigned int type, std::string shaderScript);
+int configProgram(unsigned int vertexShader, unsigned int fragmentShader);
+
+// windows setting
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
+const char* title = "main Window";
+GLFWwindow* window;
 
 
-const char* vertexShaderSource = R"(
-#version 330 core
-layout (location = 0) in vec3 aPos;   // the position variable has attribute position 0
-layout (location = 1) in vec3 aColor; // the color variable has attribute position 1
-  
-out vec3 ourColor; // output a color to the fragment shader
-
-void main()
+std::string parseShaderScript(std::string fileLocation)
 {
-    gl_Position = vec4(aPos, 1.0);
-    ourColor = aColor; // set ourColor to the input color we got from the vertex data
-}     
-)";
+    std::ifstream shaderFile;
+    std::string shaderCode;
+    try {
+        shaderFile.open(fileLocation);
+        std::stringstream shaderStream;
+        shaderStream << shaderFile.rdbuf();
+        shaderFile.close();
+        shaderCode = shaderStream.str();
+    }
+    catch (std::ifstream::failure& e) {
+        std::cout << "Error, could not open and read file" << std::endl;
+    }
 
-const char* fragmentShaderSource = R"(
-#version 330 core
-out vec4 FragColor;  
-in vec3 ourColor;
-  
-void main()
-{
-    FragColor = vec4(ourColor, 1.0);
+    return shaderCode;
 }
-//)";
-
 
 int createShader(unsigned int type, std::string shaderScript) {
     // GL_VERTEX_SHADER, GL_FRAGMENT_SHADER
     // create shader program on GPU
-    int vertexShader = glCreateShader(type);
-    
+    int shader = glCreateShader(type);
+
     // format string
     const char* source = shaderScript.c_str();
 
     // assign script to program
-    glShaderSource(vertexShader, 1, &source, NULL);
+    glShaderSource(shader, 1, &source, NULL);
 
     // compile the shader script
-    glCompileShader(vertexShader);
+    glCompileShader(shader);
 
     //check for errors if the compilation failed
-    int success;
-    char infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success)
+    std::string shaderType;
+    switch (type)
     {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        std::cout << "ERROR: failed to create shader\n" << infoLog << std::endl;
+    case GL_VERTEX_SHADER:
+        shaderType = "Vertex";
+        break;
+    case GL_FRAGMENT_SHADER:
+        shaderType = "Fragment";
+        break;
+    default:
+        shaderType = "NO";
+        break;
     }
 
-    // return the id of the compiled shader program
-    return vertexShader;
+    int success;
+    char infoLog[512];
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(shader, 512, NULL, infoLog);
+        std::cout << "ERROR: failed to create " << shaderType << " shader\n" << infoLog << std::endl;
+    }
+
+    // return the id of the compiled shader
+    return shader;
 }
 
 int configProgram(unsigned int vertexShader, unsigned int fragmentShader) {
@@ -94,10 +118,33 @@ int configProgram(unsigned int vertexShader, unsigned int fragmentShader) {
     return program;
 }
 
-int main()
-{
-    // glfw: initialize and configure
-    // ------------------------------
+int compileShader(std::string vertexShader, std::string fragmentShader) {
+    int vs = createShader(GL_VERTEX_SHADER, vertexShader);
+    int fs = createShader(GL_FRAGMENT_SHADER, fragmentShader);
+
+    int program = glCreateProgram();
+    glAttachShader(program, fs);
+    glAttachShader(program, vs);
+    glLinkProgram(program);
+    glValidateProgram(program);
+    // check for linking errors
+
+   //check for errors of the program
+    int success;
+    char infoLog[512];
+    glGetProgramiv(program, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(program, 512, NULL, infoLog);
+        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+    }
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+
+    return program;
+}
+
+void init(int src_width, int src_heright, std::string title) {
+    // initialise GLFW
     if (!glfwInit()) {
         std::cout << "glfw failed to initilise" << std::endl;
     }
@@ -107,41 +154,47 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-#ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
 
-    // glfw window creation
-    // --------------------
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    // create window
+    const char* windowTitle = title.c_str();
+    window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, windowTitle, NULL, NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
-        return -1;
+        return;
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    // glad: load all OpenGL function pointers
-    // ---------------------------------------
+    // load glad
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         std::cout << "Failed to initialize GLAD" << std::endl;
-        return -1;
+        return;
     }
+}
 
 
-    // build and compile our shader program
-    // ------------------------------------
-    // create vertex shader 
-    int vertexShader = createShader(GL_VERTEX_SHADER, vertexShaderSource);
 
+int main()
+{
+    // initilse requirments
+    init(SCR_WIDTH, SCR_HEIGHT, title);
+
+
+    //create vetex shader
+    std::string vShaderSource = parseShaderScript("shader_scripts/vs.shader");
+    std::string fShaderSource = parseShaderScript("shader_scripts/fs.shader");
+    int shaderProgram = compileShader(vShaderSource, fShaderSource);
+
+    //int vertexShader = createShader(GL_VERTEX_SHADER, vShaderSource);
     // create fragment shader
-    int fragmentShader = createShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
-
+   // int fragmentShader = createShader(GL_FRAGMENT_SHADER, fShaderSource);
     // create te shader program from the shaders
-    int program = configProgram(vertexShader, fragmentShader);
+    //int program = configProgram(vertexShader, fragmentShader);
+
+    // configure texture
 
 
 
@@ -152,6 +205,7 @@ int main()
          0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f   // top 
 
     };
+
 
     unsigned int VBO, VAO;
     glGenVertexArrays(1, &VAO);
@@ -168,6 +222,9 @@ int main()
     // color attribute
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
+    // texture coord attribute
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
 
     // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -176,9 +233,6 @@ int main()
     // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
     glBindVertexArray(0);
 
-
-    // uncomment this call to draw in wireframe polygons.
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     // render loop
     // -----------
@@ -194,7 +248,7 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
 
         // draw our first triangle
-        glUseProgram(program);
+        glUseProgram(shaderProgram);
 
 
         glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
@@ -211,7 +265,7 @@ int main()
     // ------------------------------------------------------------------------
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
-    glDeleteProgram(program);
+    glDeleteProgram(shaderProgram);
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
