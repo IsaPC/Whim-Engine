@@ -91,6 +91,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Dependencies\GLAD\src\glad.c" />
+    <ClCompile Include="src\Shader.cpp" />
     <ClCompile Include="src\ElementArrayBuffer.cpp" />
     <ClCompile Include="src\Source.cpp" />
     <ClCompile Include="src\VertexArray.cpp" />
@@ -104,6 +105,7 @@
     <Image Include="..\..\chernoGL\chernoGL\chernoGL\textures\container.jpg" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Shader.h" />
     <ClInclude Include="src\ElementArrayBuffer.h" />
     <ClInclude Include="src\VertexArray.h" />
     <ClInclude Include="src\VertexBuffer.h" />
